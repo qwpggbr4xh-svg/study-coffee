@@ -1118,16 +1118,31 @@ function renderManual(d){
     try { if(typeof window.qrcode === 'function'){ const q = window.qrcode(0, 'M'); q.addData(payload); q.make(); box.innerHTML = q.createSvgTag(4, 4); box.hidden = false; manualQr = payload; } else { box.hidden = true; } } catch(e){ box.hidden = true; }
   }
 }
-async function doRedeem(){
-  const err = $('#rd-err'); err.textContent = '';
-  const code = String($('#rd-code').value || '').trim();
+const REDEEM_PAY = {code:'#rd-code', err:'#rd-err', btn:'#btn-redeem', box:'#redeem-box'};
+const REDEEM_ME = {code:'#rd-code-me', err:'#rd-err-me', btn:'#btn-redeem-me', box:'#redeem-me'};
+async function doRedeem(ui){
+  ui = ui || REDEEM_PAY;
+  const err = $(ui.err); err.textContent = '';
+  const code = String($(ui.code).value || '').trim();
   if(!code){ err.textContent = 'Cole o código que você recebeu.'; return; }
-  busy($('#btn-redeem'), true, 'Conferindo…');
+  busy($(ui.btn), true, 'Conferindo…');
   const r = await callFn('redeem-code', {code:code});
-  busy($('#btn-redeem'), false, true);
-  if(r.ok && r.data.ok){ profile.lifetime = true; renderAccess(); $('#rd-code').value = ''; $('#redeem-box').open = false; onLifetime(); if($('#view-pay').hidden){ toast('Código ativado'); } return; }
+  busy($(ui.btn), false, true);
+  if(r.ok && r.data.ok){
+    $(ui.code).value = ''; $(ui.box).open = false;
+    if(r.data.admin){
+      profile.is_admin = true; profile.lifetime = true; renderAccess();
+      if(!$('#view-pay').hidden) show('entry');
+      toast(r.data.already ? 'Esta conta já é administradora' : 'Pronto: esta conta agora é administradora');
+      announce('Conta administradora ativada. O botão Admin apareceu no topo.');
+      return;
+    }
+    profile.lifetime = true; renderAccess(); onLifetime();
+    if($('#view-pay').hidden){ toast(r.data.already ? 'Esta conta já tem acesso vitalício' : 'Código ativado'); }
+    return;
+  }
   const e = r.data.error;
-  err.textContent = e === 'format' ? 'Não reconhecemos este código. Cole o código completo, do SC1 até o final.'
+  err.textContent = e === 'format' ? 'Não reconhecemos este código. Cole o código completo, do começo (SC1 ou SA1) até o final.'
     : e === 'invalid' ? 'Este código não é válido. Confira se copiou tudo ou fale com o Arthur.'
     : e === 'used' ? 'Este código já foi usado em outra conta.'
     : e === 'other_email' ? ('Este código foi emitido para ' + (r.data.email || 'outro e-mail') + '. Entre com essa conta para ativá-lo.')
@@ -1252,7 +1267,8 @@ function init(){
   $('#btn-pay-retry').addEventListener('click', payStart);
   $('#btn-pay-back').addEventListener('click', function(){ renderAccess(); show('entry'); });
   $('#btn-done-enter').addEventListener('click', function(){ show('entry'); $('#entry-form').requestSubmit ? $('#entry-form').requestSubmit() : $('#btn-enter').click(); });
-  $('#f-redeem').addEventListener('submit', function(e){ e.preventDefault(); doRedeem(); });
+  $('#f-redeem').addEventListener('submit', function(e){ e.preventDefault(); doRedeem(REDEEM_PAY); });
+  $('#f-redeem-me').addEventListener('submit', function(e){ e.preventDefault(); doRedeem(REDEEM_ME); });
 
   $('#btn-account').addEventListener('click', function(){
     if(session){ openAccount(); return; }

@@ -179,6 +179,57 @@ Deno.test("redeem-code: código vinculado a e-mail só vale nessa conta", async 
   assertEquals(profile(b, "u2").lifetime, true);
 });
 
+async function signCode(prefix: string, serial: string, email: string, issued: string): Promise<string> {
+  const keys = JSON.parse(await Deno.readTextFile(new URL("./test_keys.json", import.meta.url)));
+  const payload = new TextEncoder().encode([prefix, serial, email, issued].join("|"));
+  const priv = await crypto.subtle.importKey("jwk", keys.privJwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const sig = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, priv, payload));
+  const b64u = (x: Uint8Array) => btoa(String.fromCharCode(...x)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return prefix + "." + b64u(payload) + "." + b64u(sig);
+}
+
+Deno.test("redeem-code: código SA1 torna a conta administradora (e vitalícia) uma vez só", async () => {
+  const b = setup();
+  const h = await loadHandler("../redeem-code/index.ts");
+  const code = await signCode("SA1", "9001", "", "20261022");
+  // conta comum vira admin + vitalício
+  let r = await call(h, "redeem-code", { user: "u1", body: { code } });
+  let j = await r.json();
+  assertEquals(r.status, 200, JSON.stringify(j));
+  assertEquals(j.ok, true);
+  assertEquals(j.admin, true);
+  assertEquals(j.serial, "9001");
+  assertEquals(profile(b, "u1").is_admin, true);
+  assertEquals(profile(b, "u1").lifetime, true);
+  assertEquals(profile(b, "u1").lifetime_source, "code:A9001");
+  assertEquals(b.tables.redeemed_codes.length, 1);
+  assertEquals(b.tables.redeemed_codes[0].serial, "A9001");
+  // mesma conta de novo: já é admin
+  j = await (await call(h, "redeem-code", { user: "u1", body: { code } })).json();
+  assertEquals(j.already, true);
+  assertEquals(j.admin, true);
+  // outra conta: usado
+  r = await call(h, "redeem-code", { user: "u2", body: { code } });
+  assertEquals(r.status, 409);
+  assertEquals(profile(b, "u2").is_admin, false);
+  // um vitalício nº 9001 não colide com o admin nº 9001
+  const life = await signCode("SC1", "9001", "", "20261022");
+  j = await (await call(h, "redeem-code", { user: "u2", body: { code: life } })).json();
+  assertEquals(j.ok, true, JSON.stringify(j));
+  assertEquals(j.admin, false);
+  assertEquals(profile(b, "u2").lifetime, true);
+  assertEquals(profile(b, "u2").is_admin, false);
+  // conta que já tem vitalício ainda pode virar admin com um SA1 novo
+  const code2 = await signCode("SA1", "9002", "outro@exemplo.com", "20261022");
+  j = await (await call(h, "redeem-code", { user: "u2", body: { code: code2 } })).json();
+  assertEquals(j.ok, true, JSON.stringify(j));
+  assertEquals(profile(b, "u2").is_admin, true);
+  // SA1 com payload de SC1 (prefixo trocado) não passa
+  const swapped = "SA1" + life.slice(3);
+  r = await call(h, "redeem-code", { user: "adm", body: { code: swapped } });
+  assertEquals((await r.json()).error, "format");
+});
+
 Deno.test("admin-grant: só admin libera, revoga e repõe acessos grátis", async () => {
   const b = setup();
   const h = await loadHandler("../admin-grant/index.ts");

@@ -659,7 +659,7 @@ dialog.sheet::backdrop{background:var(--veil,rgba(5,12,10,.6))}
         <details class="redeem" id="redeem-box">
           <summary>Tenho um código vitalício</summary>
           <form id="f-redeem" novalidate>
-            <div class="field"><label for="rd-code">Código</label><textarea id="rd-code" rows="3" autocapitalize="none" spellcheck="false" placeholder="Cole aqui o código que o Arthur enviou (começa com SC1.)"></textarea></div>
+            <div class="field"><label for="rd-code">Código</label><textarea id="rd-code" rows="3" autocapitalize="none" spellcheck="false" placeholder="Cole aqui o código que o Arthur enviou (começa com SC1. ou SA1.)"></textarea></div>
             <p id="rd-err" class="err" role="alert"></p>
             <button id="btn-redeem" class="btn btn-primary btn-block" type="submit">Ativar código</button>
           </form>
@@ -726,6 +726,13 @@ dialog.sheet::backdrop{background:var(--veil,rgba(5,12,10,.6))}
       <div class="scene-pick" data-slot="account" style="margin-top:10px"></div>
       <button id="btn-view-save" class="btn btn-block" type="button">Salvar vista</button>
       <p id="view-err" class="err" role="alert"></p>
+    </details>
+    <details id="redeem-me"><summary>Tenho um código</summary>
+      <form id="f-redeem-me" novalidate>
+        <div class="field"><label for="rd-code-me">Código</label><textarea id="rd-code-me" rows="3" autocapitalize="none" spellcheck="false" placeholder="Cole o código que o Arthur enviou (começa com SC1. ou SA1.)"></textarea></div>
+        <p id="rd-err-me" class="err" role="alert"></p>
+        <button class="btn btn-block" type="submit" id="btn-redeem-me">Ativar código</button>
+      </form>
     </details>
     <details><summary>Trocar senha</summary>
       <form id="f-pass" novalidate>

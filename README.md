@@ -30,7 +30,7 @@ Projeto: `mcpffjkyngnwscdxqrrf` (Study Coffee). Migrações e funções já apli
 1. Para reaplicar do zero: migrações em `supabase/migrations/` (SQL Editor, `supabase db push` ou conector) e as cinco funções de `supabase/functions/` (`mp-webhook` com **Verify JWT desligado**, como em `supabase/config.toml`).
 2. Authentication → Sign In / Providers → Email: desligue **Confirm email** (cadastro instantâneo). Se preferir manter, configure um SMTP próprio: o SMTP padrão manda poucos e-mails por hora.
 3. Authentication → URL Configuration: **Site URL** = endereço do site no GitHub Pages (ex.: `https://SEU-USUARIO.github.io/study-coffee/`) e adicione o mesmo endereço em **Redirect URLs**.
-4. Depois de criar a sua conta no site, torne-se admin no SQL Editor:
+4. Depois de criar a sua conta no site, ative um código de administrador (painel → tipo Administrador) em Conta → "Tenho um código". Alternativa pelo SQL Editor:
    ```sql
    update public.profiles set is_admin = true where email = 'seu@email.com';
    ```
@@ -47,8 +47,10 @@ Settings → Pages → Source: **Deploy from a branch** → `main` / `/ (root)`.
 ### 4. Workflow opcional (deploy do Supabase a cada push)
 Settings → Secrets and variables → Actions: `SUPABASE_ACCESS_TOKEN` (token pessoal em supabase.com/dashboard/account/tokens), `SUPABASE_PROJECT_ID` (ref do projeto), `SUPABASE_DB_PASSWORD`, e, se tiver, `MP_ACCESS_TOKEN` / `MP_WEBHOOK_SECRET`. Sem esses segredos o workflow não faz nada.
 
-## Códigos vitalícios
-Continuam valendo: são assinados pela chave privada do painel do Arthur e conferidos pela chave pública em `supabase/functions/_shared/codes.ts`. Agora cada nº só pode ser usado **uma vez** (tabela `redeemed_codes`) e, se o código tiver e-mail, só na conta desse e-mail.
+## Códigos vitalícios e de administrador
+Continuam valendo: são assinados pela chave privada do painel do Arthur e conferidos pela chave pública em `supabase/functions/_shared/codes.ts`. Cada nº só pode ser usado **uma vez** (tabela `redeemed_codes`) e, se o código tiver e-mail, só na conta desse e-mail.
+- `SC1.` = acesso vitalício.
+- `SA1.` = administrador: a conta vira admin (botão Admin no site, com liberação manual de vitalícios) e ganha o vitalício. Os nºs de admin ficam num espaço próprio (`A9001`…). Para ativar: Conta (e-mail no topo) → "Tenho um código". O painel gera os dois tipos.
 
 ## Testes
 - Funções (Deno, com Supabase e Mercado Pago simulados): `deno test --allow-env --allow-read --allow-net=registry.npmjs.org supabase/functions/_tests/`

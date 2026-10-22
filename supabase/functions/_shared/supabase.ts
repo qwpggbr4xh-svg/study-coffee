@@ -52,3 +52,10 @@ export async function grantLifetime(admin: Admin, userId: string, source: string
     .eq("lifetime", false);
   if (error) throw error;
 }
+
+/** Torna a conta administradora (e garante o vitalício). Idempotente. */
+export async function grantAdmin(admin: Admin, userId: string, source: string): Promise<void> {
+  await grantLifetime(admin, userId, source);
+  const { error } = await admin.from("profiles").update({ is_admin: true }).eq("id", userId).eq("is_admin", false);
+  if (error) throw error;
+}

@@ -1,8 +1,13 @@
-// Códigos vitalícios assinados: SC1.<payload base64url>.<assinatura ECDSA P-256 base64url>
-// O payload é "SC1|<nº>|<e-mail ou vazio>|<AAAAMMDD>". A chave privada fica só no painel do Arthur.
+// Códigos assinados: <tipo>.<payload base64url>.<assinatura ECDSA P-256 base64url>
+// Tipos: SC1 = acesso vitalício; SA1 = administrador (também libera o vitalício).
+// O payload é "<tipo>|<nº>|<e-mail ou vazio>|<AAAAMMDD>". A chave privada fica só no painel do Arthur.
+
+export type CodeKind = "lifetime" | "admin";
+export const KIND_BY_PREFIX: Record<string, CodeKind> = { SC1: "lifetime", SA1: "admin" };
 
 export interface VerifiedCode {
   code: string;
+  kind: CodeKind;
   serial: string;
   email: string;
   issued: string;
@@ -41,7 +46,7 @@ interface Parsed extends VerifiedCode {
 export function parseCode(raw: unknown): Parsed | null {
   const code = String(raw ?? "").replace(/\s+/g, "");
   const m = code.split(".");
-  if (m.length !== 3 || m[0] !== "SC1") return null;
+  if (m.length !== 3 || !KIND_BY_PREFIX[m[0]]) return null;
   let payloadBytes: Uint8Array, sig: Uint8Array;
   try {
     payloadBytes = b64uToBytes(m[1]);
@@ -52,9 +57,9 @@ export function parseCode(raw: unknown): Parsed | null {
   if (sig.length !== 64) return null;
   const payload = new TextDecoder().decode(payloadBytes);
   const p = payload.split("|");
-  if (p.length !== 4 || p[0] !== "SC1") return null;
+  if (p.length !== 4 || p[0] !== m[0]) return null;
   if (!/^\d{4,6}$/.test(p[1]) || !/^\d{8}$/.test(p[3])) return null;
-  return { code, payloadBytes, sig, serial: p[1], email: normEmail(p[2]), issued: p[3] };
+  return { code, payloadBytes, sig, kind: KIND_BY_PREFIX[m[0]], serial: p[1], email: normEmail(p[2]), issued: p[3] };
 }
 
 export async function verifyCode(raw: unknown, keys: JsonWebKey[] = pubKeys()): Promise<{ ok: true; value: VerifiedCode } | { ok: false; reason: "format" | "invalid" }> {
@@ -64,7 +69,7 @@ export async function verifyCode(raw: unknown, keys: JsonWebKey[] = pubKeys()): 
     try {
       const key = await crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
       const ok = await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, key, parsed.sig as BufferSource, parsed.payloadBytes as BufferSource);
-      if (ok) return { ok: true, value: { code: parsed.code, serial: parsed.serial, email: parsed.email, issued: parsed.issued } };
+      if (ok) return { ok: true, value: { code: parsed.code, kind: parsed.kind, serial: parsed.serial, email: parsed.email, issued: parsed.issued } };
     } catch { /* tenta a próxima chave */ }
   }
   return { ok: false, reason: "invalid" };
