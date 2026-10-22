@@ -2,7 +2,7 @@
 window.SC_CONFIG = {
   /* Supabase → Project Settings → API */
   supabaseUrl: 'https://mcpffjkyngnwscdxqrrf.supabase.co',
-  supabaseAnonKey: '',
+  supabaseAnonKey: 'sb_publishable_ywxWfGsHcoKU99Q4GKbTzQ_5mVR_lcw',
 
   /* WhatsApp do Arthur para o aluno mandar o comprovante no Pix manual: DDI+DDD+número, só dígitos (ex.: 5511999998888). Vazio esconde o botão. */
   whatsapp: '',
