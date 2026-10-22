@@ -1,0 +1,49 @@
+# Publica o banco (migrações), as funções e os segredos no Supabase a partir do GitHub.
+# Só faz algo se os segredos SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_ID e SUPABASE_DB_PASSWORD existirem no repositório
+# (Settings → Secrets and variables → Actions). Sem eles, o workflow termina sem erro.
+# Alternativa: o Claude aplica tudo pelo conector do Supabase; aí este workflow fica como reserva.
+name: Supabase
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/**"
+      - ".github/workflows/supabase.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      MP_ACCESS_TOKEN: ${{ secrets.MP_ACCESS_TOKEN }}
+      MP_WEBHOOK_SECRET: ${{ secrets.MP_WEBHOOK_SECRET }}
+      PIX_AMOUNT: ${{ vars.PIX_AMOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sem segredos do Supabase, nada a fazer
+        if: ${{ env.SUPABASE_ACCESS_TOKEN == '' || env.PROJECT_ID == '' }}
+        run: echo "Segredos SUPABASE_ACCESS_TOKEN / SUPABASE_PROJECT_ID ausentes; pulando."
+      - uses: supabase/setup-cli@v1
+        if: ${{ env.SUPABASE_ACCESS_TOKEN != '' && env.PROJECT_ID != '' }}
+        with:
+          version: latest
+      - name: Ligar ao projeto
+        if: ${{ env.SUPABASE_ACCESS_TOKEN != '' && env.PROJECT_ID != '' }}
+        run: supabase link --project-ref "$PROJECT_ID"
+      - name: Aplicar migrações
+        if: ${{ env.SUPABASE_ACCESS_TOKEN != '' && env.PROJECT_ID != '' }}
+        run: supabase db push
+      - name: Publicar funções
+        if: ${{ env.SUPABASE_ACCESS_TOKEN != '' && env.PROJECT_ID != '' }}
+        run: supabase functions deploy --project-ref "$PROJECT_ID"
+      - name: Gravar segredos das funções (Mercado Pago)
+        if: ${{ env.SUPABASE_ACCESS_TOKEN != '' && env.PROJECT_ID != '' && env.MP_ACCESS_TOKEN != '' }}
+        run: |
+          args="MP_ACCESS_TOKEN=$MP_ACCESS_TOKEN"
+          if [ -n "$MP_WEBHOOK_SECRET" ]; then args="$args MP_WEBHOOK_SECRET=$MP_WEBHOOK_SECRET"; fi
+          if [ -n "$PIX_AMOUNT" ]; then args="$args PIX_AMOUNT=$PIX_AMOUNT"; fi
+          supabase secrets set --project-ref "$PROJECT_ID" $args

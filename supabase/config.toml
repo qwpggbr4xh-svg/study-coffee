@@ -1,0 +1,17 @@
+# Configuração usada pelo Supabase CLI (deploy pelo GitHub Actions).
+# O webhook do Mercado Pago chega sem token de usuário, por isso não exige JWT.
+
+[functions.create-pix]
+verify_jwt = true
+
+[functions.check-pix]
+verify_jwt = true
+
+[functions.redeem-code]
+verify_jwt = true
+
+[functions.admin-grant]
+verify_jwt = true
+
+[functions.mp-webhook]
+verify_jwt = false
