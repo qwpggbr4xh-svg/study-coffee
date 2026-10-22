@@ -78,6 +78,10 @@ input[type="text"],input[type="email"],input[type="password"],select,textarea{wi
 textarea{font:500 .86rem/1.45 var(--font-mono);min-height:96px;resize:vertical;overflow-wrap:anywhere}
 input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 input[type="range"]{width:100%;accent-color:var(--accent)}
+.pw{position:relative}
+.pw input{padding-right:5.6rem}
+.pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);font:600 .78rem/1 var(--font-body);padding:.5rem .65rem;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink-dim);cursor:pointer}
+.pw-toggle:hover,.pw-toggle[aria-pressed="true"]{color:var(--ink);background:var(--surface-2)}
 .err{color:var(--bad);font-size:.88rem;min-height:1.3em;margin:-4px 0 8px}
 .ok{color:var(--calm);font-size:.9rem;font-weight:600}
 .eyebrow{font:500 .78rem/1 var(--font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
@@ -301,10 +305,10 @@ dialog.sheet::backdrop{background:var(--veil,rgba(5,12,10,.6))}
       <div>
         <p class="eyebrow">Sala de estudos online</p>
         <h1 id="hero-title" class="hero">Uma mesa de café para estudar junto, mesmo de longe.</h1>
-        <p class="lede">Pomodoro sincronizado com a turma, chuva na janela e frases para quem mira Fuvest, Unicamp e Unesp.</p>
+        <p class="lede">Pomodoro sincronizado com a turma, chuva na janela e frases para quem mira Fuvest, Unicamp, Unesp, Vunesp, Goiás, FGV/Insper ou ENEM.</p>
         <ul class="facts">
           <li><b>25 · 5</b><span>Ciclos de foco e pausa. Também 50 · 10 e 90 · 15.</span></li>
-          <li><b>3 provas</b><span>Frases de motivação separadas para Fuvest, Unicamp e Unesp.</span></li>
+          <li><b>7 provas</b><span>Frases de motivação separadas por vestibular, da Fuvest ao ENEM.</span></li>
           <li><b>Código</b><span>Quem digita o mesmo código senta na mesma mesa.</span></li>
         </ul>
       </div>
@@ -330,20 +334,20 @@ dialog.sheet::backdrop{background:var(--veil,rgba(5,12,10,.6))}
           </div>
           <form id="f-login" novalidate>
             <div class="field"><label for="lg-email">E-mail</label><input id="lg-email" type="email" autocomplete="email" autocapitalize="none" spellcheck="false"></div>
-            <div class="field"><label for="lg-pass">Senha</label><input id="lg-pass" type="password" autocomplete="current-password"></div>
+            <div class="field"><label for="lg-pass">Senha</label><div class="pw"><input id="lg-pass" type="password" autocomplete="current-password"><button type="button" class="pw-toggle" data-for="lg-pass" aria-pressed="false" aria-label="Mostrar senha">Mostrar</button></div></div>
             <p id="lg-err" class="err" role="alert"></p>
             <button id="btn-login" class="btn btn-primary btn-block" type="submit">Entrar</button>
-            <p class="sub-links"><button class="linkbtn" id="lnk-forgot" type="button">Esqueci a senha</button></p>
+            <p class="sub-links"><button class="linkbtn" id="lnk-forgot" type="button">Esqueci a senha</button><button class="linkbtn" id="lnk-guest" type="button">Entrar sem conta</button></p>
           </form>
           <form id="f-signup" novalidate hidden>
             <div class="field"><label for="su-name">Apelido</label><input id="su-name" type="text" maxlength="20" autocomplete="nickname" placeholder="Como os colegas vão te ver"></div>
-            <div class="field"><label for="su-goal">Vestibular que você mira</label>
-              <select id="su-goal"><option value="fuvest">Fuvest (USP)</option><option value="unicamp">Unicamp</option><option value="unesp">Unesp</option><option value="todas">Os três</option></select></div>
+            <div class="field"><label for="su-goal">Vestibular que você mira</label><select id="su-goal" class="goal-select"></select></div>
             <div class="field"><label for="su-email">E-mail</label><input id="su-email" type="email" autocomplete="email" autocapitalize="none" spellcheck="false"></div>
-            <div class="field"><label for="su-pass">Senha</label><input id="su-pass" type="password" autocomplete="new-password"><p class="hint">Pelo menos 6 caracteres.</p></div>
+            <div class="field"><label for="su-pass">Senha</label><div class="pw"><input id="su-pass" type="password" autocomplete="new-password"><button type="button" class="pw-toggle" data-for="su-pass" aria-pressed="false" aria-label="Mostrar senha">Mostrar</button></div><p class="hint">Pelo menos 6 caracteres.</p></div>
             <p id="su-err" class="err" role="alert"></p>
             <button id="btn-signup" class="btn btn-primary btn-block" type="submit">Criar conta e entrar</button>
             <p class="fine">3 acessos grátis. Depois, acesso vitalício por R$ 10, pagamento único.</p>
+            <p class="sub-links"><button class="linkbtn" id="lnk-guest-2" type="button">Entrar sem conta</button></p>
           </form>
           <form id="f-forgot" novalidate hidden>
             <p class="hint" style="margin-bottom:14px">Enviamos um link para você criar uma senha nova.</p>
@@ -357,11 +361,29 @@ dialog.sheet::backdrop{background:var(--veil,rgba(5,12,10,.6))}
           <p id="auth-msg" class="notice" hidden></p>
         </div>
 
+        <form id="guest-form" class="card" novalidate hidden>
+          <h2>Entrar sem conta</h2>
+          <div class="field"><label for="gu-name">Apelido</label><input id="gu-name" type="text" maxlength="20" autocomplete="nickname" placeholder="Como os colegas vão te ver"></div>
+          <div class="field"><label for="gu-goal">Vestibular que você mira</label><select id="gu-goal" class="goal-select"></select></div>
+          <div class="field"><label for="gu-room">Código da mesa</label><input id="gu-room" type="text" maxlength="48" autocomplete="off" autocapitalize="none" spellcheck="false"><p class="hint">Combine o código com seus colegas. Só letras, números, ponto e hífen.</p></div>
+          <div class="meter">
+            <div class="cups" id="gu-cups" aria-hidden="true">
+              <span class="cup"><svg class="ic" viewBox="0 0 24 24"><use href="#i-cup"/></svg></span>
+              <span class="cup"><svg class="ic" viewBox="0 0 24 24"><use href="#i-cup"/></svg></span>
+              <span class="cup"><svg class="ic" viewBox="0 0 24 24"><use href="#i-cup"/></svg></span>
+            </div>
+            <p id="gu-access-text">3 de 3 acessos grátis neste aparelho. Entrar usa 1.</p>
+          </div>
+          <p id="gu-error" class="err" role="alert"></p>
+          <button id="btn-gu-enter" class="btn btn-primary btn-block" type="submit">Entrar na sala</button>
+          <p class="fine">Sem conta, os acessos grátis ficam só neste aparelho. Para o acesso vitalício, crie uma conta.</p>
+          <p class="sub-links"><button class="linkbtn" id="lnk-gu-login" type="button">Já tenho conta</button><button class="linkbtn" id="lnk-gu-signup" type="button">Criar conta</button></p>
+        </form>
+
         <form id="entry-form" class="card" novalidate hidden>
           <h2>Pegue um lugar na mesa</h2>
           <div class="field"><label for="in-name">Apelido</label><input id="in-name" type="text" maxlength="20" autocomplete="nickname" placeholder="Como os colegas vão te ver"></div>
-          <div class="field"><label for="in-goal">Vestibular que você mira</label>
-            <select id="in-goal"><option value="fuvest">Fuvest (USP)</option><option value="unicamp">Unicamp</option><option value="unesp">Unesp</option><option value="todas">Os três</option></select></div>
+          <div class="field"><label for="in-goal">Vestibular que você mira</label><select id="in-goal" class="goal-select"></select></div>
           <div class="field"><label for="in-room">Código da mesa</label><input id="in-room" type="text" maxlength="48" autocomplete="off" autocapitalize="none" spellcheck="false"><p class="hint">Combine o código com seus colegas. Só letras, números, ponto e hífen.</p></div>
           <div class="meter" id="meter">
             <div class="cups" id="cups" aria-hidden="true">
@@ -428,12 +450,7 @@ dialog.sheet::backdrop{background:var(--veil,rgba(5,12,10,.6))}
           <div class="panel" id="quotes-panel">
             <div class="row"><h3>Frases para a prova</h3><label class="switch"><input id="sw-quotes" type="checkbox" role="switch"><span>Mostrar</span></label></div>
             <div id="quotes-inner">
-              <div class="chips" id="quote-chips" role="group" aria-label="Vestibular">
-                <button class="chip" type="button" data-q="fuvest" aria-pressed="false">Fuvest</button>
-                <button class="chip" type="button" data-q="unicamp" aria-pressed="false">Unicamp</button>
-                <button class="chip" type="button" data-q="unesp" aria-pressed="false">Unesp</button>
-                <button class="chip" type="button" data-q="todas" aria-pressed="false">Todas</button>
-              </div>
+              <div class="chips" id="quote-chips" role="group" aria-label="Vestibular"></div>
               <div id="quote-body" class="quote-body"><p id="quote-text" class="quote-text"></p><p id="quote-meta" class="quote-meta"></p></div>
               <div class="quote-foot"><button id="btn-quote" class="btn btn-sm" type="button">Outra frase</button></div>
             </div>
@@ -524,7 +541,7 @@ dialog.sheet::backdrop{background:var(--veil,rgba(5,12,10,.6))}
       <h2 id="reset-title">Crie uma senha nova</h2>
       <div class="card">
         <form id="f-reset" novalidate>
-          <div class="field"><label for="rs-pass">Senha nova</label><input id="rs-pass" type="password" autocomplete="new-password"><p class="hint">Pelo menos 6 caracteres.</p></div>
+          <div class="field"><label for="rs-pass">Senha nova</label><div class="pw"><input id="rs-pass" type="password" autocomplete="new-password"><button type="button" class="pw-toggle" data-for="rs-pass" aria-pressed="false" aria-label="Mostrar senha">Mostrar</button></div><p class="hint">Pelo menos 6 caracteres.</p></div>
           <p id="rs-err" class="err" role="alert"></p>
           <button id="btn-reset-save" class="btn btn-primary btn-block" type="submit">Salvar senha</button>
         </form>
@@ -574,7 +591,7 @@ dialog.sheet::backdrop{background:var(--veil,rgba(5,12,10,.6))}
     <p class="status" id="me-status" data-on="0"></p>
     <details><summary>Trocar senha</summary>
       <form id="f-pass" novalidate>
-        <div class="field"><label for="np-pass">Senha nova</label><input id="np-pass" type="password" autocomplete="new-password"></div>
+        <div class="field"><label for="np-pass">Senha nova</label><div class="pw"><input id="np-pass" type="password" autocomplete="new-password"><button type="button" class="pw-toggle" data-for="np-pass" aria-pressed="false" aria-label="Mostrar senha">Mostrar</button></div></div>
         <p id="np-err" class="err" role="alert"></p>
         <button class="btn btn-block" type="submit" id="btn-pass">Salvar senha nova</button>
       </form>
@@ -606,7 +623,10 @@ const PHASES = ['focus','short','long'];
 const PHASE_NAME = {focus:'Foco', short:'Pausa curta', long:'Pausa longa'};
 const PRESETS = {classic:{focus:1500, short:300, long:900}, extended:{focus:3000, short:600, long:1200}, marathon:{focus:5400, short:900, long:1800}};
 const DEMO_PRESET = {focus:10, short:5, long:8};
-const GOALS = {fuvest:'Fuvest', unicamp:'Unicamp', unesp:'Unesp', todas:'Todas'};
+const GOALS = {fuvest:'Fuvest', unicamp:'Unicamp', unesp:'Unesp', vunesp:'Banca Vunesp', goias:'Particulares de Goiás', fgv:'FGV / Insper', enem:'ENEM', todas:'Todos'};
+const GOAL_OPTIONS = [['fuvest','Fuvest (USP)'], ['unicamp','Unicamp'], ['unesp','Unesp'], ['vunesp','Banca Vunesp (Famema, Famerp, Santa Casa…)'], ['goias','Particulares de Goiás (PUC Goiás, UniEvangélica…)'], ['fgv','FGV / Insper'], ['enem','ENEM'], ['todas','Vários']];
+const GUEST_KEY = 'studycoffee.guest';
+const GUEST_SESSION_KEY = 'studycoffee.guest.session';
 const SUBJECTS = ['Revisão geral','Matemática','Física','Química','Biologia','História','Geografia','Português e Literatura','Redação','Inglês','Filosofia e Sociologia','Provas anteriores'];
 const DEMO_SEATS = [{name:'Marina', subject:'Biologia', off:200}, {name:'Caio', subject:'Matemática', off:900}, {name:'Bia', subject:'Redação', off:1580}];
 const QUOTES = [
@@ -630,9 +650,29 @@ const QUOTES = [
   {u:'unesp', t:'Fundamentos bem sabidos rendem mais pontos que truques. Revise o básico até virar automático.'},
   {u:'unesp', t:'Faça questões de provas anteriores da Unesp e anote o que errou. O caderno de erros é o seu melhor material.'},
   {u:'unesp', t:'Bauru, Araraquara, Botucatu, Rio Claro, Franca: cada campus tem alguém que já estudou numa noite como esta.'},
-  {u:'unesp', t:'A segunda fase é onde a constância aparece. Redija, resolva, corrija e repita.'}
+  {u:'unesp', t:'A segunda fase é onde a constância aparece. Redija, resolva, corrija e repita.'},
+  {u:'vunesp', t:'A Vunesp gosta de enunciado longo com a resposta escondida no texto. Leia tudo, sublinhe o que é dado e só então olhe as alternativas.'},
+  {u:'vunesp', t:'Prova da Vunesp é prova de resistência: muitas questões, pouco tempo. Treine com o relógio para não deixar questão fácil para trás.'},
+  {u:'vunesp', t:'Na Vunesp, a alternativa "quase certa" é a armadilha preferida. Elimine com calma antes de marcar.'},
+  {u:'vunesp', t:'Atualidades e interpretação valem muito nas provas da Vunesp. Um texto por dia já muda o jogo.'},
+  {u:'vunesp', t:'Da Unesp à Famema, muita gente passou pela mesma banca. O padrão dela se aprende com provas antigas.'},
+  {u:'goias', t:'PUC Goiás, UniEvangélica, UniRV, Unip: cada uma tem seu vestibular, mas todas pesam a redação. Escreva uma por semana.'},
+  {u:'goias', t:'Muitas particulares de Goiás aceitam a nota do Enem. Uma boa prova vira porta de entrada em várias faculdades de uma vez.'},
+  {u:'goias', t:'Vestibular agendado não é prova fácil: é prova sem desculpa para chegar despreparado. Marque a data e monte o cronograma de trás para frente.'},
+  {u:'goias', t:'Medicina na PUC Goiás ou na UniEvangélica cobra fôlego em química e biologia. Resolva questões dessas duas todo dia.'},
+  {u:'goias', t:'De Goiânia a Anápolis, a vaga que você quer começa numa noite de estudo como esta.'},
+  {u:'fgv', t:'FGV e Insper cobram raciocínio no papel: resposta certa sem justificativa vale pouco. Treine escrever a solução inteira.'},
+  {u:'fgv', t:'No Insper, as provas de análise verbal e quantitativa medem como você pensa sob pressão. Faça simulados cronometrados.'},
+  {u:'fgv', t:'A matemática discursiva da FGV premia quem organiza a resolução. Comece pelo que sabe e mostre cada passo.'},
+  {u:'fgv', t:'A redação da FGV pede argumento com dados, não opinião solta. Monte um repertório de números e fatos.'},
+  {u:'fgv', t:'Economia, Administração ou Direito: nas duas escolas, inglês e interpretação aparecem em tudo. Leia um artigo em inglês por dia.'},
+  {u:'enem', t:'O Enem é maratona: dois domingos, 180 questões e uma redação. Treinar resistência vale tanto quanto treinar conteúdo.'},
+  {u:'enem', t:'Na TRI, acertar as fáceis vale mais que arriscar as difíceis. Garanta o básico antes de brigar pelas questões cabeludas.'},
+  {u:'enem', t:'A redação do Enem tem cinco competências. Uma proposta de intervenção completa é o que separa 800 de 960.'},
+  {u:'enem', t:'O Enem cobra interpretação em todas as áreas. Até a questão de física começa com um texto: leia com atenção.'},
+  {u:'enem', t:'Um simulado completo por mês, com tempo real, mostra onde você perde ponto por cansaço e não por falta de conteúdo.'}
 ];
-const QUOTE_LABEL = {geral:'Para todos os vestibulares', fuvest:'Fuvest · USP', unicamp:'Unicamp', unesp:'Unesp'};
+const QUOTE_LABEL = {geral:'Para todos os vestibulares', fuvest:'Fuvest · USP', unicamp:'Unicamp', unesp:'Unesp', vunesp:'Banca Vunesp', goias:'Particulares de Goiás', fgv:'FGV · Insper', enem:'ENEM'};
 
 /* ================= utilidades ================= */
 const $ = (s, r) => (r || document).querySelector(s);
@@ -689,6 +729,26 @@ function load(){
 const S = load();
 function save(){ lsSet(KEY, JSON.stringify(S)); }
 
+/* ================= visitante (sem conta): acessos grátis ficam neste aparelho ================= */
+function loadGuest(){
+  const g = {id:'', name:'', goal:'fuvest', free:FREE_ACCESSES};
+  try {
+    const o = JSON.parse(lsGet(GUEST_KEY) || 'null');
+    if(o && typeof o === 'object'){
+      g.id = /^[a-z0-9]{6,24}$/.test(String(o.id || '')) ? o.id : '';
+      g.name = str(o.name, 20);
+      g.goal = GOALS[o.goal] ? o.goal : 'fuvest';
+      g.free = (o.free === undefined) ? FREE_ACCESSES : Math.max(0, Math.min(FREE_ACCESSES, Math.floor(num(+o.free)) || 0));
+    }
+  } catch(e){}
+  if(!g.id){ g.id = 'g' + Math.random().toString(36).slice(2, 12); }
+  return g;
+}
+const G = loadGuest();
+let guestMode = false;
+function saveGuest(){ lsSet(GUEST_KEY, JSON.stringify(G)); }
+const isGuest = () => guestMode && !session;
+
 /* ================= toast ================= */
 let toastTimer = 0;
 function toast(msg){ const el = $('#toast'); el.textContent = msg; el.dataset.show = '1'; clearTimeout(toastTimer); toastTimer = setTimeout(function(){ el.dataset.show = '0'; }, 2800); }
@@ -725,13 +785,29 @@ async function callFn(name, body){
 }
 function authErrorText(error){
   const m = String((error && error.message) || '').toLowerCase();
-  if(m.indexOf('invalid login') >= 0 || m.indexOf('invalid credentials') >= 0) return 'E-mail ou senha incorretos.';
-  if(m.indexOf('not confirmed') >= 0) return 'Confirme seu e-mail pelo link que enviamos antes de entrar.';
-  if(m.indexOf('already registered') >= 0 || m.indexOf('already been registered') >= 0) return 'Já existe uma conta com este e-mail. Entre com a senha.';
-  if(m.indexOf('password') >= 0 && m.indexOf('least') >= 0) return 'A senha precisa ter pelo menos 6 caracteres.';
-  if(m.indexOf('rate limit') >= 0 || m.indexOf('too many') >= 0) return 'Muitas tentativas. Espere um minuto e tente de novo.';
+  const code = String((error && error.code) || '').toLowerCase();
+  if(code === 'over_email_send_rate_limit' || m.indexOf('email rate limit') >= 0) return 'O servidor de e-mail de confirmação está no limite agora. Tente de novo em 1 hora, ou entre sem conta por enquanto.';
+  if(code === 'email_address_invalid' || (m.indexOf('email') >= 0 && m.indexOf('invalid') >= 0)) return 'Este e-mail não foi aceito. Use um e-mail real (Gmail, Outlook, iCloud…).';
+  if(code === 'invalid_credentials' || m.indexOf('invalid login') >= 0 || m.indexOf('invalid credentials') >= 0) return 'E-mail ou senha incorretos. Se você ainda não criou a conta, use "Criar conta".';
+  if(code === 'email_not_confirmed' || m.indexOf('not confirmed') >= 0) return 'Confirme seu e-mail pelo link que enviamos antes de entrar.';
+  if(code === 'user_already_exists' || m.indexOf('already registered') >= 0 || m.indexOf('already been registered') >= 0) return 'Já existe uma conta com este e-mail. Entre com a senha.';
+  if(code === 'weak_password' || (m.indexOf('password') >= 0 && m.indexOf('least') >= 0)) return 'A senha precisa ter pelo menos 6 caracteres.';
+  if(code === 'over_request_rate_limit' || m.indexOf('rate limit') >= 0 || m.indexOf('too many') >= 0) return 'Muitas tentativas. Espere um minuto e tente de novo.';
   if(m.indexOf('fetch') >= 0 || m.indexOf('network') >= 0) return 'Sem conexão com o servidor. Confira sua internet.';
   return (error && error.message) ? error.message : 'Algo deu errado. Tente de novo.';
+}
+/* erros que o Supabase devolve na URL quando um link de e-mail falha (#error=...&error_code=otp_expired) */
+function urlAuthError(){
+  try {
+    const h = String(location.hash || '').replace(/^#/, '');
+    if(!h || h.indexOf('error') < 0) return '';
+    const p = new URLSearchParams(h);
+    const code = p.get('error_code') || '', desc = p.get('error_description') || p.get('error') || '';
+    if(!code && !desc) return '';
+    try { history.replaceState(null, '', location.pathname + location.search); } catch(e){}
+    if(code === 'otp_expired' || /expired|invalid/i.test(desc)) return 'Este link de e-mail expirou ou já foi usado. Entre com e-mail e senha; se esqueceu a senha, peça um link novo em "Esqueci a senha".';
+    return 'O link de e-mail não funcionou (' + desc.replace(/\+/g, ' ') + '). Entre com e-mail e senha.';
+  } catch(e){ return ''; }
 }
 async function loadProfile(){
   if(!sb || !uid()) { profile = null; return null; }
@@ -774,16 +850,30 @@ function show(view){
   if(view !== 'pay') stopPayPolling();
   try { window.scrollTo(0,0); } catch(e){}
 }
+function renderGuest(){
+  const free = G.free;
+  const pill = $('#access-pill');
+  pill.hidden = false;
+  if(free > 0){ pill.textContent = 'Visitante · ' + free + (free === 1 ? ' acesso grátis' : ' acessos grátis'); pill.dataset.state = 'free'; }
+  else { pill.textContent = 'Visitante · acessos esgotados'; pill.dataset.state = 'out'; }
+  $$('#gu-cups .cup').forEach(function(el,i){ el.dataset.on = (i < free) ? '1' : '0'; });
+  $('#gu-access-text').textContent = free > 0 ? (free + ' de ' + FREE_ACCESSES + ' acessos grátis neste aparelho. Entrar usa 1.') : 'Os 3 acessos grátis de visitante acabaram. Crie uma conta para continuar.';
+  $('#btn-gu-enter').textContent = free > 0 ? 'Entrar na sala' : 'Criar conta para continuar';
+  if(document.activeElement !== $('#gu-name')) $('#gu-name').value = G.name;
+  if(document.activeElement !== $('#gu-goal')) $('#gu-goal').value = G.goal;
+}
 function renderAccess(){
   const pill = $('#access-pill'), logged = !!(session && profile);
   pill.hidden = !logged;
-  $('#btn-account').hidden = !session;
+  $('#btn-account').hidden = false;
   $('#btn-admin').hidden = !isAdmin();
   $('#owner-tools').hidden = !isAdmin();
   $('#setup-box').hidden = configured;
-  $('#auth-box').hidden = !configured || !!session;
+  $('#auth-box').hidden = !configured || !!session || guestMode;
+  $('#guest-form').hidden = !configured || !!session || !guestMode;
   $('#entry-form').hidden = !configured || !session;
   $('#btn-account-text').textContent = session ? (session.user.email || 'Conta') : 'Entrar';
+  if(isGuest()) renderGuest();
   if(!logged) return;
   const free = Math.max(0, Math.floor(num(+profile.free_left)));
   if(isPaid()){ pill.textContent = 'Acesso vitalício'; pill.dataset.state = 'paid'; }
@@ -889,16 +979,59 @@ async function doLogout(){
 async function handleSession(s, event){
   const hadSession = !!session;
   session = s || null;
-  if(event === 'PASSWORD_RECOVERY'){ await loadProfile(); renderAccess(); show('reset'); return; }
-  if(!session){ profile = null; unwatchProfile(); renderAccess(); if($('#view-room').hidden && $('#view-reset').hidden) show('entry'); return; }
+  if(event === 'PASSWORD_RECOVERY'){ guestMode = false; await loadProfile(); renderAccess(); show('reset'); return; }
+  if(!session){
+    profile = null; unwatchProfile();
+    if(event === 'INITIAL_SESSION' && ssGet(GUEST_SESSION_KEY) === '1' && G.name && G.free < FREE_ACCESSES){ guestMode = true; renderAccess(); enterRoom(); return; }
+    renderAccess();
+    if($('#view-room').hidden && $('#view-reset').hidden) show('entry');
+    return;
+  }
+  guestMode = false;
+  ssDel(GUEST_SESSION_KEY);
+  if(!$('#view-room').hidden && hadSession === false && event === 'SIGNED_IN'){ exitRoom(); }
   await loadProfile();
   renderAccess();
   watchProfile();
-  if(!hadSession && event === 'SIGNED_IN'){
-    show('entry');
-    if(profile && !isPaid() && num(+profile.free_left) <= 0){ /* fica na entrada; o botão leva ao Pix */ }
-  }
+  if(!hadSession && event === 'SIGNED_IN'){ show('entry'); }
   if(event === 'INITIAL_SESSION' && ssGet(SESSION_KEY) === '1' && profile && (isPaid() || num(+profile.free_left) < FREE_ACCESSES)){ enterRoom(); }
+}
+
+/* ================= visitante ================= */
+function startGuest(){
+  guestMode = true;
+  $('#auth-msg').hidden = true;
+  $('#gu-room').value = S.room;
+  renderAccess();
+  try { $('#gu-name').focus(); } catch(e){}
+}
+function leaveGuest(tab){
+  guestMode = false;
+  ssDel(GUEST_SESSION_KEY);
+  renderAccess();
+  authTab(tab || 'login');
+}
+function onGuestEnter(e){
+  e.preventDefault();
+  const err = $('#gu-error');
+  if(G.free <= 0){
+    leaveGuest('signup');
+    authMessage('Seus 3 acessos grátis de visitante acabaram neste aparelho. Crie uma conta: ela tem 3 acessos grátis e a opção de acesso vitalício.', 'warn');
+    $('#su-name').value = G.name; $('#su-goal').value = G.goal;
+    return;
+  }
+  const name = str($('#gu-name').value, 20);
+  if(!name){ err.textContent = 'Digite um apelido para os colegas verem na mesa.'; $('#gu-name').focus(); return; }
+  err.textContent = '';
+  G.name = name;
+  G.goal = GOALS[$('#gu-goal').value] ? $('#gu-goal').value : 'fuvest';
+  G.free -= 1;
+  saveGuest();
+  S.room = cleanCode($('#gu-room').value); $('#gu-room').value = S.room; $('#in-room').value = S.room;
+  S.quoteGoal = G.goal; save();
+  ssSet(GUEST_SESSION_KEY, '1');
+  renderAccess();
+  enterRoom();
 }
 
 /* ================= entrar na mesa ================= */
@@ -1009,10 +1142,13 @@ function renderQuotesUi(){ $('#sw-quotes').checked = S.quotesOn; $('#quotes-inne
 
 /* ================= mesa ao vivo (Supabase Realtime Presence) ================= */
 let roomChan = null, peersList = [], seatEls = [], quoteTimer = 0, roomActive = false;
-const tabKey = (uid() || 'x') + ':' + Math.random().toString(36).slice(2, 10);
+const tabKey = ':' + Math.random().toString(36).slice(2, 10);
+const myId = () => uid() || (isGuest() ? G.id : 'x');
+const myName = () => session ? ((profile && profile.name) || '') : (isGuest() ? G.name : '');
+const myGoal = () => session ? ((profile && profile.goal) || '') : (isGuest() ? G.goal : '');
 function setConn(ok, label){ const el = $('#conn'); el.dataset.ok = ok ? '1' : '0'; el.textContent = label; }
 function myPresence(){
-  return {uid:uid(), name:profile ? profile.name : '', goal:profile ? profile.goal : '', subject:S.subject, phase:T.phase, running:T.running,
+  return {uid:myId(), name:myName(), goal:myGoal(), subject:S.subject, phase:T.phase, running:T.running,
     endsAt:T.running ? T.endsAt : 0, remaining:T.running ? 0 : T.remaining, startedAt:T.startedAt, cycle:T.cycle};
 }
 let presenceTimer = 0;
@@ -1028,12 +1164,12 @@ function readPresence(){
     const arr = state[key] || [];
     const pr = arr[arr.length - 1];
     if(!pr) return;
-    list.push({key:key, isMe:pr.uid === uid(), sameTab:key === myKey(), presence:pr});
+    list.push({key:key, isMe:pr.uid === myId(), sameTab:key === myKey(), presence:pr});
   });
   peersList = list;
   renderSeats(); updateSync();
 }
-function myKey(){ return (uid() || 'x') + tabKey.slice(tabKey.indexOf(':')); }
+function myKey(){ return myId() + tabKey; }
 function joinRoom(code){
   setConn(false, 'Conectando…');
   roomActive = true;
@@ -1058,7 +1194,7 @@ function leaveRoom(){
 function demoLive(off, now){ const t = ((now / 1000) + off) % 1800; return t < 1500 ? {phase:'focus', running:true, ms:(1500 - t) * 1000} : {phase:'short', running:true, ms:(1800 - t) * 1000}; }
 function seatModels(){
   const list = [];
-  list.push({name:(profile && profile.name) || 'Você', subject:S.subject, me:true, get:function(now){ return {phase:T.phase, running:T.running, ms:curRemaining(now)}; }});
+  list.push({name:myName() || 'Você', subject:S.subject, me:true, get:function(now){ return {phase:T.phase, running:T.running, ms:curRemaining(now)}; }});
   const others = peersList.filter(function(p){ return !p.sameTab; });
   others.forEach(function(p){
     const pr = p.presence || {};
@@ -1137,7 +1273,7 @@ function exitRoom(){
   leaveRoom(); stopRain();
   $('#btn-rain').setAttribute('aria-pressed','false'); $('#btn-rain').textContent = 'Ligar chuva';
   if(T.running){ T.remaining = curRemaining(); T.running = false; }
-  ssDel(SESSION_KEY);
+  ssDel(SESSION_KEY); ssDel(GUEST_SESSION_KEY);
   renderAccess(); show('entry');
 }
 
@@ -1283,8 +1419,32 @@ async function adminGrant(action){
 function init(){
   const sub = $('#sel-subject');
   SUBJECTS.forEach(function(s){ const o = document.createElement('option'); o.value = s; o.textContent = s; sub.appendChild(o); });
+  $$('select.goal-select').forEach(function(sel){ GOAL_OPTIONS.forEach(function(g){ const o = document.createElement('option'); o.value = g[0]; o.textContent = g[1]; sel.appendChild(o); }); });
+  const chips = $('#quote-chips');
+  Object.keys(GOALS).forEach(function(k){ const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.dataset.q = k; b.setAttribute('aria-pressed', 'false'); b.textContent = GOALS[k]; chips.appendChild(b); });
   $('#in-room').value = S.room;
+  $('#gu-room').value = S.room;
   $('#pix-key').textContent = PIX.key;
+
+  /* mostrar/ocultar senha */
+  $$('.pw-toggle').forEach(function(b){
+    b.addEventListener('click', function(){
+      const input = document.getElementById(b.dataset.for); if(!input) return;
+      const showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      b.setAttribute('aria-pressed', showing ? 'false' : 'true');
+      b.setAttribute('aria-label', showing ? 'Mostrar senha' : 'Ocultar senha');
+      b.textContent = showing ? 'Mostrar' : 'Ocultar';
+      try { input.focus({preventScroll:true}); } catch(e){}
+    });
+  });
+
+  /* visitante */
+  $('#lnk-guest').addEventListener('click', startGuest);
+  $('#lnk-guest-2').addEventListener('click', startGuest);
+  $('#guest-form').addEventListener('submit', onGuestEnter);
+  $('#lnk-gu-login').addEventListener('click', function(){ leaveGuest('login'); });
+  $('#lnk-gu-signup').addEventListener('click', function(){ leaveGuest('signup'); $('#su-name').value = G.name; $('#su-goal').value = G.goal; });
 
   $('#f-login').addEventListener('submit', function(e){ e.preventDefault(); doLogin(); });
   $('#f-signup').addEventListener('submit', function(e){ e.preventDefault(); doSignup(); });
@@ -1324,7 +1484,12 @@ function init(){
   $('#btn-done-enter').addEventListener('click', function(){ show('entry'); $('#entry-form').requestSubmit ? $('#entry-form').requestSubmit() : $('#btn-enter').click(); });
   $('#f-redeem').addEventListener('submit', function(e){ e.preventDefault(); doRedeem(); });
 
-  $('#btn-account').addEventListener('click', openAccount);
+  $('#btn-account').addEventListener('click', function(){
+    if(session){ openAccount(); return; }
+    if(!$('#view-room').hidden){ exitRoom(); }
+    leaveGuest('login');
+    try { $('#lg-email').focus(); } catch(e){}
+  });
   $('#dlg-close').addEventListener('click', closeAccount);
   $('#dlg').addEventListener('click', function(e){ if(e.target === $('#dlg')) closeAccount(); });
   $('#btn-logout').addEventListener('click', doLogout);
@@ -1342,6 +1507,8 @@ function init(){
   window.addEventListener('beforeunload', function(){ if(roomChan){ try { roomChan.untrack(); } catch(e){} } });
 
   authTab('login');
+  const linkErr = urlAuthError();
+  if(linkErr) authMessage(linkErr, 'warn');
   renderAccess();
   show('entry');
   if(sb){

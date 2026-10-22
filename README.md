@@ -1,6 +1,6 @@
 # Study Coffee
 
-Sala de estudos online com pomodoro sincronizado, chuva na janela e frases para Fuvest, Unicamp e Unesp. Três acessos grátis por conta; depois, acesso vitalício por R$ 10 via Pix.
+Sala de estudos online com pomodoro sincronizado, chuva na janela e frases para Fuvest, Unicamp, Unesp, banca Vunesp, particulares de Goiás, FGV/Insper e ENEM. Três acessos grátis por conta (ou por aparelho, para quem entra sem conta); depois, acesso vitalício por R$ 10 via Pix.
 
 ## Como funciona
 
@@ -9,7 +9,7 @@ Sala de estudos online com pomodoro sincronizado, chuva na janela e frases para 
 | `index.html` + `config.js` | GitHub Pages | O site. Conversa com o Supabase pelo navegador. |
 | `supabase/migrations/*.sql` | Supabase (Postgres) | Tabelas `profiles`, `payments`, `redeemed_codes`, `entries`; regras de acesso (RLS); função `enter_room` que conta os acessos grátis no servidor. |
 | `supabase/functions/*` | Supabase Edge Functions (Deno) | `create-pix` e `check-pix` (cobrança Pix no Mercado Pago), `mp-webhook` (aviso do Mercado Pago), `redeem-code` (códigos vitalícios assinados), `admin-grant` (liberação manual pelo admin). |
-| Mesa ao vivo | Supabase Realtime (Presence) | Cada aluno publica seu timer no canal `room:<código da mesa>`; os colegas aparecem na mesa. |
+| Mesa ao vivo | Supabase Realtime (Presence) | Cada aluno publica seu timer no canal `room:<código da mesa>`; os colegas aparecem na mesa. Visitantes sem conta também entram (acessos grátis contados no aparelho). |
 
 Fluxo do pagamento: o aluno abre a tela do Pix → `create-pix` cria a cobrança no Mercado Pago e devolve o QR → o aluno paga → o Mercado Pago chama `mp-webhook` (e o site consulta `check-pix` a cada 6 s) → o servidor marca `lifetime = true` → a tela do aluno libera sozinha via Realtime.
 
