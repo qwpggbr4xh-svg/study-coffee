@@ -6,10 +6,17 @@ Sala de estudos online com pomodoro sincronizado, chuva na janela e frases para 
 
 | Parte | Onde roda | O que faz |
 |---|---|---|
-| `index.html` + `config.js` | GitHub Pages | O site. Conversa com o Supabase pelo navegador. |
-| `supabase/migrations/*.sql` | Supabase (Postgres) | Tabelas `profiles`, `payments`, `redeemed_codes`, `entries`; regras de acesso (RLS); função `enter_room` que conta os acessos grátis no servidor. |
+| `index.html` + `config.js` + `js/` | GitHub Pages | O site. `js/app.js` é a lógica, `js/cafe3d.js` o café 3D (Three.js) e `js/voice.js` o microfone (WebRTC). Conversa com o Supabase pelo navegador. |
+| `supabase/migrations/*.sql` | Supabase (Postgres) | Tabelas `profiles`, `payments`, `redeemed_codes`, `entries`, `focus_log` (tempo de foco), `tasks` (checklist); regras de acesso (RLS); funções `enter_room` (conta os acessos grátis), `log_focus` (registra foco com limites anti-trapaça) e `room_ranking` (ranking da mesa por dia, semana ou mês). |
 | `supabase/functions/*` | Supabase Edge Functions (Deno) | `create-pix` e `check-pix` (cobrança Pix no Mercado Pago), `mp-webhook` (aviso do Mercado Pago), `redeem-code` (códigos vitalícios assinados), `admin-grant` (liberação manual pelo admin). |
-| Mesa ao vivo | Supabase Realtime (Presence) | Cada aluno publica seu timer no canal `room:<código da mesa>`; os colegas aparecem na mesa. Visitantes sem conta também entram (acessos grátis contados no aparelho). |
+| Mesa ao vivo | Supabase Realtime (Presence + Broadcast) | Cada aluno publica timer, foco de agora, personagem e estado do microfone no canal `room:<código da mesa>`; os colegas aparecem na mesa (lista ou café 3D). O mesmo canal transporta a sinalização de voz (WebRTC ponto a ponto, áudio não passa pelo servidor). Visitantes sem conta também entram (acessos grátis contados no aparelho). |
+
+### Recursos da mesa
+- **Ranking da mesa**: tempo de foco (timer rodando na fase Foco) por dia, semana (segunda a domingo) e mês, fuso de São Paulo. O site envia fatias de até 15 min pela função `log_focus`, que recusa mais tempo do que passou e limita 16 h/dia. Visitantes não entram no ranking.
+- **Minha lista**: checklist pessoal com data; a estrela marca o foco de agora, que aparece em cima do timer e vira o "estudando" que os colegas veem. Contas salvam na tabela `tasks`; visitantes só no aparelho.
+- **Microfone**: botão na barra da mesa. Quem liga manda áudio para os presentes por WebRTC (STUN do Google, sem servidor de mídia); cada um pode silenciar um colega só para si. Precisa de HTTPS (GitHub Pages já é).
+- **Café 3D**: "Café por cima" e "Minha visão" mostram os personagens de cada um nas mesas do café (janela com chuva, estante, balcão ou plantas, conforme a escolha do aluno). Sem WebGL o site fica na lista.
+- **Personagem**: montado no cadastro, na entrada sem conta ou em Conta → Meu personagem; fica em `profiles.avatar` (contas) ou no aparelho (visitantes).
 
 Fluxo do pagamento: o aluno abre a tela do Pix → `create-pix` cria a cobrança no Mercado Pago e devolve o QR → o aluno paga → o Mercado Pago chama `mp-webhook` (e o site consulta `check-pix` a cada 6 s) → o servidor marca `lifetime = true` → a tela do aluno libera sozinha via Realtime.
 
@@ -44,11 +51,15 @@ Continuam valendo: são assinados pela chave privada do painel do Arthur e confe
 
 ## Testes
 - Funções (Deno, com Supabase e Mercado Pago simulados): `deno test --allow-env --allow-read --allow-net=registry.npmjs.org supabase/functions/_tests/`
-- A migração foi validada num Postgres real (PGlite) com RLS, triggers e `enter_room`.
+- As migrações foram validadas num Postgres real (PGlite) com RLS, triggers, `enter_room`, `log_focus` e `room_ranking`.
+- O site foi testado em jsdom com um Supabase simulado (contas, Pix, códigos, visitante, lista, ranking, microfone) e em Chromium real (WebRTC entre duas abas, café 3D).
 
 ## Arquivos
 ```
-index.html            o site
+index.html            o site (marcação e estilos)
+js/app.js             lógica do site
+js/cafe3d.js          café 3D e montador de personagem (Three.js r128)
+js/voice.js           microfone da mesa (WebRTC)
 config.js             URL e chave pública do Supabase, WhatsApp, Pix manual
 supabase/config.toml  verify_jwt por função
 supabase/migrations/  banco
