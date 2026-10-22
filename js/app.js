@@ -98,7 +98,7 @@ function brcode(txid, amount){
 }
 
 /* ================= preferências deste aparelho ================= */
-function freshState(){ return {room:'mesa-aberta', preset:'classic', subject:SUBJECTS[0], quotesOn:true, quoteGoal:'fuvest', auto:true, demoSeats:true, vol:35, view3d:'list', rankPeriod:'week', stats:{day:todayKey(), pomos:0, sec:0}}; }
+function freshState(){ return {room:'mesa-aberta', preset:'classic', subject:SUBJECTS[0], quotesOn:true, quoteGoal:'fuvest', auto:true, demoSeats:true, vol:35, view:'list', rankPeriod:'week', stats:{day:todayKey(), pomos:0, sec:0}}; }
 function load(){
   const s = freshState();
   try {
@@ -109,7 +109,10 @@ function load(){
     if(!PRESETS[s.preset]) s.preset = 'classic';
     if(!GOALS[s.quoteGoal]) s.quoteGoal = 'todas';
     if(SUBJECTS.indexOf(s.subject) < 0) s.subject = SUBJECTS[0];
-    if(['list','top','first'].indexOf(s.view3d) < 0) s.view3d = 'list';
+    if(s.view === undefined && s.view3d !== undefined) s.view = s.view3d;
+    delete s.view3d;
+    if(s.view === 'top') s.view = 'first';
+    if(['list','first'].indexOf(s.view) < 0) s.view = 'list';
     if(['day','week','month'].indexOf(s.rankPeriod) < 0) s.rankPeriod = 'week';
     s.room = cleanCode(s.room);
     s.vol = Math.max(0, Math.min(100, num(+s.vol) || 0));
@@ -121,9 +124,11 @@ const S = load();
 function save(){ lsSet(KEY, JSON.stringify(S)); }
 
 /* ================= visitante (sem conta): acessos grátis ficam neste aparelho ================= */
-const CAFE = window.SCCafe || null;
-function normAvatar(a){ return CAFE ? CAFE.normalize(a) : (a && typeof a === 'object' ? a : null); }
-function randomAvatar(seed){ return CAFE ? CAFE.defaultAvatar(seed) : {skin:1, hair:'short', hairColor:'#3b2a1a', shirt:'#f4b94e', acc:'none', view:'window'}; }
+const SCENE = window.SCScene || null;
+const VIEW_KEYS = SCENE ? SCENE.KEYS : ['books', 'counter', 'window'];
+function viewKey(v){ return SCENE ? SCENE.viewKey(v) : (VIEW_KEYS.indexOf(v) >= 0 ? v : 'window'); }
+/* "avatar" guarda o que o aluno vê da mesa (profiles.avatar / visitante no aparelho): {view:'books'|'counter'|'window'} */
+function normAvatar(a){ const o = (a && typeof a === 'object') ? a : {}; return {view:viewKey(o.view)}; }
 function loadGuest(){
   const g = {id:'', name:'', goal:'fuvest', free:FREE_ACCESSES, avatar:null};
   try {
@@ -133,11 +138,11 @@ function loadGuest(){
       g.name = str(o.name, 20);
       g.goal = GOALS[o.goal] ? o.goal : 'fuvest';
       g.free = (o.free === undefined) ? FREE_ACCESSES : Math.max(0, Math.min(FREE_ACCESSES, Math.floor(num(+o.free)) || 0));
-      g.avatar = o.avatar ? normAvatar(o.avatar) : null;
+      g.avatar = normAvatar(o.avatar);
     }
   } catch(e){}
   if(!g.id){ g.id = 'g' + Math.random().toString(36).slice(2, 12); }
-  if(!g.avatar) g.avatar = randomAvatar(g.id);
+  if(!g.avatar) g.avatar = normAvatar(null);
   return g;
 }
 const G = loadGuest();
@@ -298,7 +303,7 @@ function authTab(tab){
   $('#auth-title').textContent = tab === 'forgot' ? 'Recuperar a senha' : 'Pegue um lugar na mesa';
   $('#auth-msg').hidden = true;
   ['lg','su','fg'].forEach(function(p){ $('#' + p + '-err').textContent = ''; });
-  if(tab === 'signup') mountAvatar('signup', pendingAvatar() || (AV.slot === 'signup' ? AV.cfg : null) || G.avatar); else unmountAvatar('signup');
+  if(tab === 'signup') setPick('signup', pendingView() || (G.avatar && G.avatar.view));
 }
 function authMessage(text, kind){ const el = $('#auth-msg'); el.textContent = text; el.dataset.kind = kind || ''; el.hidden = false; }
 async function doLogin(){
@@ -319,8 +324,7 @@ async function doSignup(){
   if(!name){ err.textContent = 'Digite um apelido para os colegas verem na mesa.'; $('#su-name').focus(); return; }
   if(!validEmail(email)){ err.textContent = 'Digite um e-mail válido.'; return; }
   if(pw.length < 6){ err.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return; }
-  const avatar = AV.slot === 'signup' ? currentAvatarCfg() : null;
-  if(avatar) lsSet(PENDING_AVATAR_KEY, JSON.stringify(avatar));
+  lsSet(PENDING_VIEW_KEY, pickedView('signup'));
   busy($('#btn-signup'), true, 'Criando…');
   const {data, error} = await sb.auth.signUp({email:email, password:pw, options:{data:{name:name, goal:goal}, emailRedirectTo:SITE_URL}});
   busy($('#btn-signup'), false, true);
@@ -403,13 +407,12 @@ function startGuest(){
   $('#auth-msg').hidden = true;
   $('#gu-room').value = S.room;
   renderAccess();
-  mountAvatar('guest', G.avatar);
+  setPick('guest', G.avatar && G.avatar.view);
   try { $('#gu-name').focus(); } catch(e){}
 }
 function leaveGuest(tab){
   guestMode = false;
   ssDel(GUEST_SESSION_KEY);
-  unmountAvatar('guest');
   renderAccess();
   authTab(tab || 'login');
 }
@@ -427,10 +430,9 @@ function onGuestEnter(e){
   err.textContent = '';
   G.name = name;
   G.goal = GOALS[$('#gu-goal').value] ? $('#gu-goal').value : 'fuvest';
-  if(AV.slot === 'guest') G.avatar = currentAvatarCfg();
+  G.avatar = {view:pickedView('guest')};
   G.free -= 1;
   saveGuest();
-  unmountAvatar('guest');
   S.room = cleanCode($('#gu-room').value); $('#gu-room').value = S.room; $('#in-room').value = S.room;
   S.quoteGoal = G.goal; save();
   ssSet(GUEST_SESSION_KEY, '1');
@@ -505,7 +507,7 @@ function renderTimer(){
   const mins = Math.floor(S.stats.sec / 60);
   $('#stats').textContent = S.stats.pomos === 0 ? 'Hoje: nenhum pomodoro ainda' : ('Hoje: ' + S.stats.pomos + (S.stats.pomos === 1 ? ' pomodoro' : ' pomodoros') + ' · ' + mins + ' min de foco');
 }
-function tick(){ const now = Date.now(); accrueFocus(now); if(T.running && now >= T.endsAt) completePhase(); renderTimer(); updateSeatTimes(); cafeTick(now); }
+function tick(){ const now = Date.now(); accrueFocus(now); if(T.running && now >= T.endsAt) completePhase(); renderTimer(); updateSeatTimes(); updateSceneChips(); }
 
 /* ================= áudio ================= */
 let actx = null, rainSrc = null, rainGain = null;
@@ -551,13 +553,12 @@ const myId = () => uid() || (isGuest() ? G.id : 'x');
 const myName = () => session ? ((profile && profile.name) || '') : (isGuest() ? G.name : '');
 const myGoal = () => session ? ((profile && profile.goal) || '') : (isGuest() ? G.goal : '');
 function setConn(ok, label){ const el = $('#conn'); el.dataset.ok = ok ? '1' : '0'; el.textContent = label; }
-function avatarOr(a, seed){ return (a && typeof a === 'object') ? normAvatar(a) : randomAvatar(seed); }
-function myAvatar(){ return avatarOr(session ? (profile && profile.avatar) : (isGuest() ? G.avatar : null), myId()); }
+function myView(){ return viewKey(session ? (profile && profile.avatar && profile.avatar.view) : (isGuest() ? (G.avatar && G.avatar.view) : null)); }
 function mySubject(){ const f = Tasks.focus(); return (f && !f.done) ? f.text : S.subject; }
 function myPresence(){
   return {uid:myId(), name:myName(), goal:myGoal(), subject:str(mySubject(), 60), phase:T.phase, running:T.running,
     endsAt:T.running ? T.endsAt : 0, remaining:T.running ? 0 : T.remaining, startedAt:T.startedAt, cycle:T.cycle,
-    avatar:myAvatar(), mic:!!(voice && voice.isOn())};
+    mic:!!(voice && voice.isOn())};
 }
 let presenceTimer = 0;
 function pushPresence(){
@@ -610,17 +611,17 @@ function leaveRoom(){
 function demoLive(off, now){ const t = ((now / 1000) + off) % 1800; return t < 1500 ? {phase:'focus', running:true, ms:(1500 - t) * 1000} : {phase:'short', running:true, ms:(1800 - t) * 1000}; }
 function seatModels(){
   const list = [];
-  list.push({key:myKey(), name:myName() || 'Você', subject:str(mySubject(), 60), me:true, avatar:myAvatar(), mic:!!(voice && voice.isOn()), get:function(now){ return {phase:T.phase, running:T.running, ms:curRemaining(now)}; }});
+  list.push({key:myKey(), name:myName() || 'Você', subject:str(mySubject(), 60), me:true, mic:!!(voice && voice.isOn()), get:function(now){ return {phase:T.phase, running:T.running, ms:curRemaining(now)}; }});
   const others = peersList.filter(function(p){ return !p.sameTab; });
   others.forEach(function(p){
     const pr = p.presence || {};
     const phase = PHASES.indexOf(pr.phase) >= 0 ? pr.phase : 'focus';
     const run = pr.running === true && num(pr.endsAt) > 0;
     const end = num(pr.endsAt), rem = num(pr.remaining);
-    list.push({key:p.key, name:str(pr.name, 24) || 'Colega', subject:str(pr.subject, 60), me:false, avatar:avatarOr(pr.avatar, p.key), mic:pr.mic === true, get:function(now){ return {phase:phase, running:run, ms:run ? Math.max(0, end - now) : rem}; }});
+    list.push({key:p.key, name:str(pr.name, 24) || 'Colega', subject:str(pr.subject, 60), me:false, mic:pr.mic === true, get:function(now){ return {phase:phase, running:run, ms:run ? Math.max(0, end - now) : rem}; }});
   });
   const demo = (others.length === 0 && S.demoSeats);
-  if(demo){ DEMO_SEATS.forEach(function(d, i){ list.push({key:'demo' + i, name:d.name, subject:d.subject, demo:true, avatar:randomAvatar('demo' + d.name), get:function(now){ return demoLive(d.off, now); }}); }); }
+  if(demo){ DEMO_SEATS.forEach(function(d, i){ list.push({key:'demo' + i, name:d.name, subject:d.subject, demo:true, get:function(now){ return demoLive(d.off, now); }}); }); }
   return {list:list, real:1 + others.length, demo:demo};
 }
 function buildSeat(m){
@@ -662,7 +663,7 @@ function renderSeats(){
   $('#table-count').textContent = model.real + (model.real === 1 ? ' pessoa' : ' pessoas') + ' na mesa';
   $('#demo-note').hidden = !model.demo;
   updateSeatTimes();
-  cafeUpdate(model);
+  sceneUpdate(model);
 }
 function updateSeatTimes(){ const now = Date.now(); seatEls.forEach(function(s){ const g = s.get(now); s.el.dataset.phase = g.phase; s.cup.dataset.running = g.running ? '1' : '0'; s.st.textContent = g.running ? (PHASE_NAME[g.phase] + ' · ' + fmt(g.ms)) : 'Pausado'; }); }
 function syncTarget(){
@@ -924,119 +925,88 @@ async function toggleMic(){
   } finally { busy(btn, false); }
 }
 
-/* ================= café 3D ================= */
-let cafe = null, cafeModel = null, cafeSig = '', cafeLastCheck = 0;
-function cafeAvailable(){ return !!(CAFE && CAFE.available()); }
-function cafePeople(model){
-  const now = Date.now();
-  return model.list.map(function(m){ const g = m.get(now); return {key:m.key, name:m.name, isMe:!!m.me, running:!!g.running, phase:g.phase, mic:!!m.mic, avatar:m.avatar}; });
+/* ================= minha visão: foto da mesa com vida ================= */
+let scene = null, sceneChip = '';
+function sceneUpdate(model){
+  const el = $('#scene-people'); if(!el) return;
+  el.textContent = model.real === 1 ? 'só você na mesa' : (model.real + ' na mesa');
 }
-function cafeUpdate(model){
-  cafeModel = model;
-  if(!cafe || S.view3d === 'list') return;
-  const people = cafePeople(model);
-  const sig = JSON.stringify(people);
-  if(sig === cafeSig) return;
-  cafeSig = sig;
-  cafe.setPeople(people);
-  cafe.setMode(S.view3d);
+function updateSceneChips(){
+  const box = $('#scene'); if(!box || box.hidden) return;
+  const txt = PHASE_NAME[T.phase] + ' · ' + fmt(curRemaining());
+  if(txt === sceneChip) return;
+  sceneChip = txt;
+  const c = $('#scene-time'); c.textContent = txt; c.dataset.phase = T.phase;
 }
-function cafeTick(now){ if(cafe && S.view3d !== 'list' && now - cafeLastCheck > 1000){ cafeLastCheck = now; cafeUpdate(seatModels()); } }
-function cafeStop(){ if(cafe) cafe.stop(); }
+function sceneStop(){ if(scene) scene.stop(); if(document.fullscreenElement && document.fullscreenElement.id === 'scene'){ try { document.exitFullscreen(); } catch(e){} } }
 function applyViewMode(mode){
-  if(mode !== 'top' && mode !== 'first') mode = 'list';
-  const ok = cafeAvailable();
-  $('#view-modes').hidden = !ok;
-  if(mode !== 'list' && !ok) mode = 'list';
-  S.view3d = mode; save();
+  if(mode === 'top') mode = 'first';
+  if(mode !== 'first') mode = 'list';
+  if(!SCENE) mode = 'list';
+  $('#view-modes').hidden = !SCENE;
+  S.view = mode; save();
   $$('#view-modes button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.view === mode ? 'true' : 'false'); });
-  const wrap = $('#cafe-wrap'), seats = $('#seats');
-  if(mode === 'list'){ wrap.hidden = true; seats.hidden = false; cafeStop(); return; }
-  if(!cafe){
-    try { cafe = CAFE.createScene($('#cafe-canvas'), {mode:mode, rain:true}); }
-    catch(e){ console.warn('cafe3d', e); cafe = null; toast('Não consegui abrir o café 3D neste navegador'); S.view3d = 'list'; save(); return applyViewMode('list'); }
+  const box = $('#scene'), hint = $('#scene-hint');
+  if(mode === 'list'){ box.hidden = true; hint.hidden = true; sceneStop(); return; }
+  if(!scene){
+    scene = SCENE.create(box);
+    const sel = $('#scene-pick');
+    VIEW_KEYS.forEach(function(k){ const o = document.createElement('option'); o.value = k; o.textContent = SCENE.SCENES[k].label; sel.appendChild(o); });
+    sel.addEventListener('change', function(){ setMyView(sel.value); });
+    $('#btn-scene-fs').addEventListener('click', function(){ scene.fullscreen(); });
   }
-  seats.hidden = true; wrap.hidden = false;
-  $('#cafe-hint').textContent = mode === 'first' ? 'Arraste para olhar ao redor da sua mesa. Quem está com a caneca fumegando está em foco.' : 'Arraste para girar o café. Quem está com a caneca fumegando está em foco.';
-  cafeSig = '';
-  cafeUpdate(cafeModel || seatModels());
-  cafe.setMode(mode);
-  cafe.start();
-  requestAnimationFrame(function(){ if(cafe) cafe.resize(); });
+  box.hidden = false; hint.hidden = false;
+  scene.setScene(myView());
+  $('#scene-pick').value = scene.key();
+  sceneChip = ''; updateSceneChips();
+  scene.start();
 }
-
-/* ================= personagem ================= */
-const PENDING_AVATAR_KEY = 'studycoffee.avatar.pending';
-const AV = {cfg:null, preview:null, slot:'', built:false};
-function pendingAvatar(){ try { return normAvatar(JSON.parse(lsGet(PENDING_AVATAR_KEY) || 'null')); } catch(e){ return null; } }
-function segButton(box, value, label, onPick){ const b = document.createElement('button'); b.type = 'button'; b.dataset.v = value; b.textContent = label; b.setAttribute('aria-pressed', 'false'); b.addEventListener('click', function(){ onPick(value); }); box.appendChild(b); }
-function swatch(box, value, label, onPick){ const b = document.createElement('button'); b.type = 'button'; b.className = 'swatch'; b.dataset.v = String(value); b.style.setProperty('--sw', typeof value === 'number' ? CAFE.OPTIONS.skins[value] : value); b.setAttribute('aria-label', label); b.title = label; b.setAttribute('aria-pressed', 'false'); b.addEventListener('click', function(){ onPick(value); }); box.appendChild(b); }
-function buildAvatarUi(){
-  if(AV.built || !CAFE) return;
-  AV.built = true;
-  const O = CAFE.OPTIONS;
-  O.skins.forEach(function(c, i){ swatch($('#av-skin'), i, 'Tom de pele ' + (i + 1), function(v){ AV.cfg.skin = v; avatarChanged(); }); });
-  O.hairs.forEach(function(h){ segButton($('#av-hair'), h[0], h[1], function(v){ AV.cfg.hair = v; avatarChanged(); }); });
-  O.hairColors.forEach(function(c, i){ swatch($('#av-haircolor'), c, 'Cor de cabelo ' + (i + 1), function(v){ AV.cfg.hairColor = v; avatarChanged(); }); });
-  O.shirts.forEach(function(c, i){ swatch($('#av-shirt'), c, 'Camisa ' + (i + 1), function(v){ AV.cfg.shirt = v; avatarChanged(); }); });
-  O.accs.forEach(function(a){ segButton($('#av-acc'), a[0], a[1], function(v){ AV.cfg.acc = v; avatarChanged(); }); });
-  const sel = $('#av-view'); O.views.forEach(function(v){ const o = document.createElement('option'); o.value = v[0]; o.textContent = v[1]; sel.appendChild(o); });
-  sel.addEventListener('change', function(){ AV.cfg.view = sel.value; avatarChanged(); });
-  $('#av-random').addEventListener('click', function(){ AV.cfg = randomAvatar(String(Math.random())); avatarChanged(); });
+/* escolha da vista nos formulários (visitante, cadastro, conta) e no seletor da sala */
+const PENDING_VIEW_KEY = 'studycoffee.view.pending';
+function pendingView(){ const v = lsGet(PENDING_VIEW_KEY); return VIEW_KEYS.indexOf(v) >= 0 ? v : ''; }
+function buildViewPicks(){
+  $$('.scene-pick[data-slot]').forEach(function(box){
+    const slot = box.dataset.slot;
+    VIEW_KEYS.forEach(function(k){
+      const sc = SCENE ? SCENE.SCENES[k] : null;
+      const lab = document.createElement('label');
+      const inp = document.createElement('input'); inp.type = 'radio'; inp.name = 'view-' + slot; inp.value = k; inp.id = 'view-' + slot + '-' + k;
+      const im = document.createElement('img'); im.alt = ''; im.loading = 'lazy'; im.decoding = 'async'; if(sc) im.src = sc.thumb;
+      const sp = document.createElement('span'); sp.textContent = sc ? (sc.short || sc.label) : k;
+      lab.appendChild(inp); lab.appendChild(im); lab.appendChild(sp); box.appendChild(lab);
+    });
+  });
 }
-function renderAvatarUi(){
-  if(!AV.cfg) return;
-  $$('#av-skin .swatch').forEach(function(b){ b.setAttribute('aria-pressed', Number(b.dataset.v) === AV.cfg.skin ? 'true' : 'false'); });
-  $$('#av-hair button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v === AV.cfg.hair ? 'true' : 'false'); });
-  $$('#av-haircolor .swatch').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v === AV.cfg.hairColor ? 'true' : 'false'); });
-  $$('#av-shirt .swatch').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v === AV.cfg.shirt ? 'true' : 'false'); });
-  $$('#av-acc button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.v === AV.cfg.acc ? 'true' : 'false'); });
-  $('#av-view').value = AV.cfg.view;
+function setPick(slot, view){ const inp = $('#view-' + slot + '-' + viewKey(view)); if(inp) inp.checked = true; }
+function pickedView(slot){ const inp = $('.scene-pick[data-slot="' + slot + '"] input:checked'); return viewKey(inp ? inp.value : ''); }
+async function setMyView(view){
+  view = viewKey(view);
+  if(scene){ scene.setScene(view); $('#scene-pick').value = view; }
+  if(session && sb && uid()){
+    const a = Object.assign({}, (profile && profile.avatar) || {}, {view:view});
+    const {error} = await sb.from('profiles').update({avatar:a}).eq('id', uid());
+    if(error){ toast('Não consegui salvar a vista: ' + authErrorText(error)); return false; }
+    if(profile) profile.avatar = a;
+  } else if(isGuest()){ G.avatar = Object.assign({}, G.avatar || {}, {view:view}); saveGuest(); }
+  setPick('account', view);
+  return true;
 }
-function avatarChanged(){ AV.cfg = normAvatar(AV.cfg) || randomAvatar('x'); renderAvatarUi(); if(AV.preview) AV.preview.setAvatar(AV.cfg); }
-function mountAvatar(slot, cfg){
-  const el = $('#avatar-builder'), target = $('.avatar-slot[data-slot="' + slot + '"]');
-  if(!el || !target || !CAFE) return;
-  buildAvatarUi();
-  if(el.parentNode !== target) target.appendChild(el);
-  el.hidden = false;
-  AV.slot = slot;
-  AV.cfg = normAvatar(cfg) || randomAvatar(String(Math.random()));
-  renderAvatarUi();
-  if(cafeAvailable()){
-    if(!AV.preview){ try { AV.preview = CAFE.createPreview($('#av-canvas')); } catch(e){ console.warn('preview', e); AV.preview = null; } }
-  }
-  if(AV.preview){ AV.preview.setAvatar(AV.cfg); AV.preview.start(); requestAnimationFrame(function(){ if(AV.preview) AV.preview.resize(); }); $('#av-nowebgl').hidden = true; }
-  else { $('#av-nowebgl').hidden = false; }
-}
-function unmountAvatar(slot){
-  if(slot && AV.slot !== slot) return;
-  if(AV.preview) AV.preview.stop();
-  const el = $('#avatar-builder'); if(el) el.hidden = true;
-  AV.slot = '';
-}
-function currentAvatarCfg(){ return normAvatar(AV.cfg) || randomAvatar(String(Math.random())); }
 async function ensureProfileAvatar(){
   if(!sb || !profile || !uid()) return;
-  if(profile.avatar && typeof profile.avatar === 'object') return;
-  const a = pendingAvatar() || randomAvatar(uid());
+  if(profile.avatar && typeof profile.avatar === 'object' && VIEW_KEYS.indexOf(profile.avatar.view) >= 0) return;
+  const a = {view:pendingView() || viewKey(profile.avatar && profile.avatar.view)};
   const {error} = await sb.from('profiles').update({avatar:a}).eq('id', uid());
-  if(!error){ profile.avatar = a; lsDel(PENDING_AVATAR_KEY); }
+  if(!error){ profile.avatar = a; lsDel(PENDING_VIEW_KEY); }
 }
-async function saveAccountAvatar(){
-  const err = $('#av-err'); err.textContent = '';
-  if(!sb || !uid()) return;
-  const a = currentAvatarCfg(), btn = $('#btn-avatar-save');
+async function saveAccountView(){
+  const err = $('#view-err'); err.textContent = '';
+  const btn = $('#btn-view-save');
   busy(btn, true, 'Salvando…');
   try {
-    const {error} = await sb.from('profiles').update({avatar:a}).eq('id', uid());
-    if(error){ err.textContent = 'Não consegui salvar o personagem: ' + authErrorText(error); return; }
-    profile.avatar = a;
-    toast('Personagem salvo');
-    renderSeats(); pushPresence();
+    const ok = await setMyView(pickedView('account'));
+    if(ok) toast('Vista salva');
   } finally { busy(btn, false, true); }
 }
-
 function enterRoom(){
   show('room');
   $('#room-code').textContent = S.room;
@@ -1048,7 +1018,7 @@ function enterRoom(){
   renderTasks();
   setupVoice();
   renderSeats();
-  applyViewMode(S.view3d);
+  applyViewMode(S.view);
   clearInterval(tickId); tickId = setInterval(tick, 250);
   clearInterval(quoteTimer); quoteTimer = setInterval(function(){ showQuote(true); }, 120000);
   focusAcc = 0; focusLastTick = 0;
@@ -1061,7 +1031,7 @@ function exitRoom(){
   clearInterval(quoteTimer); quoteTimer = 0;
   clearInterval(rankTimer); rankTimer = 0;
   flushFocus(true);
-  cafeStop();
+  sceneStop();
   leaveRoom(); stopRain();
   $('#btn-rain').setAttribute('aria-pressed','false'); $('#btn-rain').textContent = 'Ligar chuva';
   if(T.running){ T.remaining = curRemaining(); T.running = false; }
@@ -1165,8 +1135,8 @@ async function doRedeem(){
 }
 
 /* ================= conta e admin ================= */
-function openAccount(){ renderAccess(); const dlg = $('#dlg'); if(!dlg.open){ try { dlg.showModal(); } catch(e){ dlg.setAttribute('open',''); } } }
-function closeAccount(){ const dlg = $('#dlg'); try { dlg.close(); } catch(e){ dlg.removeAttribute('open'); } $('#me-avatar-details').open = false; unmountAvatar('account'); }
+function openAccount(){ renderAccess(); setPick('account', myView()); const dlg = $('#dlg'); if(!dlg.open){ try { dlg.showModal(); } catch(e){ dlg.setAttribute('open',''); } } }
+function closeAccount(){ const dlg = $('#dlg'); try { dlg.close(); } catch(e){ dlg.removeAttribute('open'); } }
 function cell(tr, text, cls){ const td = document.createElement('td'); if(cls) td.className = cls; td.textContent = text; tr.appendChild(td); return td; }
 function tagCell(tr, text, state){ const td = document.createElement('td'); const s = document.createElement('span'); s.className = 'tag'; s.dataset.on = state; s.textContent = text; td.appendChild(s); tr.appendChild(td); }
 async function loadAdmin(){
@@ -1217,6 +1187,7 @@ function init(){
   $('#in-room').value = S.room;
   $('#gu-room').value = S.room;
   $('#pix-key').textContent = PIX.key;
+  buildViewPicks();
 
   /* mostrar/ocultar senha */
   $$('.pw-toggle').forEach(function(b){
@@ -1255,9 +1226,8 @@ function init(){
   $$('#rank-periods button').forEach(function(b){ b.addEventListener('click', function(){ S.rankPeriod = b.dataset.period; save(); loadRanking(); }); });
   $('#f-task').addEventListener('submit', onTaskSubmit);
   $('#focus-done').addEventListener('change', function(){ const f = Tasks.focus(); if(f) Tasks.toggle(f.id); });
-  $('#me-avatar-details').addEventListener('toggle', function(){ if($('#me-avatar-details').open) mountAvatar('account', profile && profile.avatar); else unmountAvatar('account'); });
-  $('#btn-avatar-save').addEventListener('click', saveAccountAvatar);
-  document.addEventListener('visibilitychange', function(){ if(document.hidden){ flushFocus(false); } else if(roomActive){ cafeSig = ''; cafeUpdate(seatModels()); } });
+  $('#btn-view-save').addEventListener('click', saveAccountView);
+  document.addEventListener('visibilitychange', function(){ if(document.hidden) flushFocus(false); });
   $('#btn-copy').addEventListener('click', function(){ copyText(S.room, $('#room-code')); });
   $('#btn-start').addEventListener('click', function(){ T.running ? pause() : start(); });
   $('#btn-reset').addEventListener('click', resetPhase);
